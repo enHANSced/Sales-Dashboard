@@ -149,18 +149,79 @@ if df is not None:
         min_date = df['Date'].min().date()
         max_date = df['Date'].max().date()
         
-        date_range = st.date_input(
-            "📅 Rango de fechas:",
-            value=(min_date, max_date),
-            min_value=min_date,
-            max_value=max_date,
-            help="Selecciona el período a analizar"
-        )
+        # Inicializar el rango de fechas en session_state si no existe
+        if 'date_range_reset' not in st.session_state:
+            st.session_state.date_range_reset = False
         
+        # Determinar el valor inicial basado en si se ha restablecido
+        if st.session_state.date_range_reset:
+            initial_value = (min_date, max_date)
+            st.session_state.date_range_reset = False
+        else:
+            # Mantener el valor actual si existe en session_state
+            if 'current_date_range' in st.session_state:
+                initial_value = st.session_state.current_date_range
+            else:
+                initial_value = (min_date, max_date)
+        
+        # Crear columnas para el date_input y el botón
+        col_date, col_reset = st.columns([3, 1])
+        
+        with col_date:
+            date_range = st.date_input(
+                "📅 Rango de fechas:",
+                value=initial_value,
+                min_value=min_date,
+                max_value=max_date,
+                help="Selecciona el período a analizar"
+            )
+        
+        with col_reset:
+            st.markdown("<br>", unsafe_allow_html=True)  # Espaciado vertical
+            if st.button("🔄", help="Restablecer a todo el período", key="reset_dates"):
+                st.session_state.date_range_reset = True
+                st.session_state.current_date_range = (min_date, max_date)
+                st.rerun()
+        
+        # Guardar el rango actual en session_state
         if len(date_range) == 2:
             start_date, end_date = date_range
+            st.session_state.current_date_range = (start_date, end_date)
         else:
             start_date = end_date = date_range[0]
+            st.session_state.current_date_range = (start_date, start_date)
+        
+        # Mostrar información del período seleccionado
+        total_days = (end_date - start_date).days + 1
+        st.caption(f"📊 Período seleccionado: {total_days} día(s)")
+        
+        # Botones de acceso rápido para períodos comunes
+        st.markdown("**🚀 Accesos Rápidos:**")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📅 Último Mes", help="Últimos 30 días", key="last_month", width="stretch"):
+                end_date_quick = max_date
+                start_date_quick = max(min_date, end_date_quick - pd.Timedelta(days=29))
+                st.session_state.current_date_range = (start_date_quick, end_date_quick)
+                st.rerun()
+            
+            if st.button("📆 Últimos 7 días", help="Última semana", key="last_week", width="stretch"):
+                end_date_quick = max_date
+                start_date_quick = max(min_date, end_date_quick - pd.Timedelta(days=6))
+                st.session_state.current_date_range = (start_date_quick, end_date_quick)
+                st.rerun()
+        
+        with col2:
+            if st.button("📊 Últimos 3 Meses", help="Últimos 90 días", key="last_3months", width="stretch"):
+                end_date_quick = max_date
+                start_date_quick = max(min_date, end_date_quick - pd.Timedelta(days=89))
+                st.session_state.current_date_range = (start_date_quick, end_date_quick)
+                st.rerun()
+            
+            if st.button("🗓️ Todo el Período", help="Todos los datos disponibles", key="all_period", width="stretch"):
+                st.session_state.current_date_range = (min_date, max_date)
+                st.rerun()
     
     st.sidebar.markdown("---")
     
@@ -376,13 +437,48 @@ if df is not None:
     
     st.markdown("---")
     
-    # Pestañas para diferentes análisis
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📈 Tendencias Temporales", "🏆 Productos Top", "👑 Análisis de Clientes", 
-        "📊 Categorías & Tipos", "🎯 Dashboard Ejecutivo"
-    ])
+    # Sistema de pestañas persistentes usando session_state
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = "Tendencias"
     
-    with tab1:
+    # Crear botones para las pestañas
+    st.markdown("### 📊 Análisis Detallado")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        if st.button("📈 Tendencias", width="stretch", key="btn_tendencias",
+                     type="primary" if st.session_state.active_tab == "Tendencias" else "secondary"):
+            st.session_state.active_tab = "Tendencias"
+            st.rerun()
+    
+    with col2:
+        if st.button("🏆 Productos", width="stretch", key="btn_productos",
+                     type="primary" if st.session_state.active_tab == "Productos" else "secondary"):
+            st.session_state.active_tab = "Productos"
+            st.rerun()
+    
+    with col3:
+        if st.button("👑 Clientes", width="stretch", key="btn_clientes",
+                     type="primary" if st.session_state.active_tab == "Clientes" else "secondary"):
+            st.session_state.active_tab = "Clientes"
+            st.rerun()
+    
+    with col4:
+        if st.button("📊 Categorías", width="stretch", key="btn_categorias",
+                     type="primary" if st.session_state.active_tab == "Categorías" else "secondary"):
+            st.session_state.active_tab = "Categorías"
+            st.rerun()
+    
+    with col5:
+        if st.button("🎯 Dashboard", width="stretch", key="btn_dashboard",
+                     type="primary" if st.session_state.active_tab == "Dashboard" else "secondary"):
+            st.session_state.active_tab = "Dashboard"
+            st.rerun()
+    
+    st.markdown("---")
+    
+    # Mostrar contenido según la pestaña activa
+    if st.session_state.active_tab == "Tendencias":
         st.markdown("### 📈 Análisis de Tendencias Temporales")
         
         col1, col2 = st.columns(2)
@@ -475,7 +571,7 @@ if df is not None:
         fig_heatmap.update_layout(height=500)
         st.plotly_chart(fig_heatmap, width="stretch")
     
-    with tab2:
+    elif st.session_state.active_tab == "Productos":
         st.header("🏆 Análisis de Productos Top")
         
         # Control para número de productos a mostrar
@@ -540,7 +636,7 @@ if df is not None:
         
         st.dataframe(productos_detalle, width="stretch")
     
-    with tab3:
+    elif st.session_state.active_tab == "Clientes":
         st.header("👑 Análisis de Clientes Top")
         
         # Métricas por cliente
@@ -613,7 +709,7 @@ if df is not None:
         )
         st.plotly_chart(fig_distribucion, width="stretch")
     
-    with tab4:
+    elif st.session_state.active_tab == "Categorías":
         st.header("📊 Análisis por Categorías")
         
         # Ventas por categoría
@@ -661,7 +757,7 @@ if df is not None:
         
         st.dataframe(categoria_detalle, width="stretch")
     
-    with tab5:
+    elif st.session_state.active_tab == "Dashboard":
         st.header("🎯 Dashboard Ejecutivo")
         
         # Dashboard consolidado
